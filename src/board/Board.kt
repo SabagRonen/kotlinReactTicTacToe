@@ -10,19 +10,30 @@ import react.dom.div
 interface BoardProp : RProps
 interface BoardState : RState {
     var squares: List<String>
-    var xIsNext: Boolean
 }
 
-class Board : RComponent<BoardProp, BoardState>() {
+class Board : RComponent<BoardProp, BoardState>(), BoardContracts.View {
+    var title: String = ""
+    val userActions: BoardContracts.UserActions = BoardUserActions(this)
+
+    override fun updateState(boardState: MyBoardState) {
+        setState {
+            when (boardState) {
+                is BoardStateImpl -> {
+                    squares = boardState.cells
+                    title = boardState.title
+                }
+            }
+        }
+    }
+
     init {
         state.squares = MutableList(9){""}
-        state.xIsNext = true
+        userActions.loadData()
     }
+
     override fun RBuilder.render() {
         div {
-            val title = calculateWinner(state.squares)?.let {
-                "Winner is $it"
-            } ?: "Next player: ${if (state.xIsNext) "X" else "O"}"
             status(title)
             div {
                 renderSquare(0)
@@ -47,53 +58,8 @@ class Board : RComponent<BoardProp, BoardState>() {
 
     private fun RDOMBuilder<DIV>.renderSquare(index: Int) {
         square(state.squares[index]) {
-            handleClick(index)
+            userActions.cellClicked(index)
         }
-    }
-
-    private fun handleClick(index: Int) {
-        if (calculateWinner(state.squares) != null || state.squares[index].isNotEmpty()) {
-            return;
-        }
-        setState {
-            squares = squares.mapIndexed { mapIndex, origin ->
-                if (mapIndex != index) {
-                    origin
-                } else if (xIsNext) {
-                    "X"
-                } else {
-                    "O"
-                }
-            }
-            xIsNext = !xIsNext
-        }
-    }
-
-    private fun calculateWinner(squares: List<String>): String? {
-        val lines = arrayOf(
-                intArrayOf(0, 1, 2),
-                intArrayOf(3, 4, 5),
-                intArrayOf(6, 7, 8),
-                intArrayOf(0, 3, 6),
-                intArrayOf(1, 4, 7),
-                intArrayOf(2, 5, 8),
-                intArrayOf(0, 4, 8),
-                intArrayOf(2, 4, 6)
-        )
-
-        for (row in lines) {
-            val a = row[0]
-            val b = row[1]
-            val c = row[2]
-            if (!squares[a].isNullOrEmpty()) {
-                if (squares[a].equals(squares[b])) {
-                    if (squares[a].equals(squares[c])) {
-                        return squares[a]
-                    }
-                }
-            }
-        }
-        return null
     }
 }
 
